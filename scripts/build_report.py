@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""阶段一：四表合并去重 -> Google/Bing 漏斗报表 + 缺失UIN清单
+"""阶段一：四张必传表 + created 可选表 -> Google/Bing 漏斗报表 + 缺失UIN清单
 
 用法:
   python build_report.py --paid 付费.xlsx --tested 测试.xlsx \
-      --trial 试用.xlsx --registered 注册.xlsx --out 报表.xlsx
+      --trial 试用.xlsx --registered 注册.xlsx [--created 创建.xlsx] --out 报表.xlsx
 """
 import argparse
 import os
 import pandas as pd
 from common import apply_parse, style_workbook, COLUMNS
 
-PRIORITY = ['paid', 'tested', 'trial', 'registered']  # 字段最全的优先保留
+PRIORITY = ['paid', 'tested', 'trial', 'created', 'registered']  # 字段最全的优先保留
 CHANNEL = {'google': '谷歌', 'bingmkt': '必应'}
 
 
 def main():
     ap = argparse.ArgumentParser()
     for tag in PRIORITY:
-        ap.add_argument(f'--{tag}', required=True)
+        ap.add_argument(f'--{tag}', required=tag != 'created')
     ap.add_argument('--out', default='SEM漏斗报表.xlsx')
     args = ap.parse_args()
 
     # 1) 按优先级拼接后按 UIN 去重
     dfs, total = [], 0
     for tag in PRIORITY:
-        df = pd.read_excel(getattr(args, tag))
+        source = getattr(args, tag)
+        if not source:
+            continue
+        df = pd.read_excel(source)
         total += len(df)
         dfs.append(df)
     merged = pd.concat(dfs, ignore_index=True)
