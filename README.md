@@ -1,12 +1,36 @@
 # SEM User Funnel Report
 
-将神策或广告平台导出的注册、试用、测试、付费四张 SEM 用户明细表，合并清洗为按 Google / Bing 分渠道展示的用户漏斗 Excel 报表。
+将神策或广告平台导出的注册、试用、测试、付费四张 SEM 用户明细表，以及可选的创建明细表，合并清洗为按 Google / Bing 分渠道展示的用户漏斗 Excel 报表。
 
 适合需要按 UIN 去重、统一漏斗口径、拆分广告系列内容并修复常见 UTM 脏数据的市场、投放和数据分析人员。工具只负责本地清洗和生成明细报表，不替代神策、Impala、广告平台或正式 BI 看板。
 
+## 网页界面（推荐）
+
+`web/` 提供一个可部署到 Vercel 的前端工具。Excel 解析、去重、补数和导出全部在浏览器本地完成，文件不会上传到服务器，也不调用大模型。
+
+页面固定为四步：
+
+1. 上传 `paid`、`tested`、`trial`、`registered` 四张必传表，`created` 可选。
+2. 下载初版报表和 `missing_uins.csv`。
+3. 在 Impala 查询待补 UIN，上传一个或多个查询结果表。
+4. 选择保留或排除仍缺失的 UIN，下载最终报表。
+
+本地运行与验证：
+
+```bash
+cd web
+npm install
+npm run dev
+npm run test
+npm run build
+npm run test:sites
+```
+
+Vercel 部署时以 `web/` 为 Root Directory。部署配置和公开发布应在本地验证通过后再执行。
+
 ## 功能
 
-- 按 `paid > tested > trial > registered` 优先级合并四张明细表，并按 UIN 去重。
+- 按 `paid > tested > trial > created > registered` 优先级合并；`created` 未提供时自动跳过。
 - 仅保留 `google` 和 `bingmkt` 两类广告来源。
 - 将注册、创建、测试消耗、付费时间转换为漏斗阶段的 `0/1` 标记。
 - 将广告系列内容拆分为区域、关键词类和细分词类。
@@ -18,7 +42,7 @@
 ## 处理流程
 
 ```text
-四张原始明细表
+四张必传明细表 + created 可选表
   ↓ 合并、按 UIN 去重、筛选渠道
 初版 Google/Bing 漏斗报表 + missing_uins.csv
   ↓ 人工按 UIN 补查 UTM 数据
@@ -52,12 +76,13 @@ openpyxl
 
 ## 输入文件
 
-阶段一需要四张结构相同的 `.xlsx` 文件：
+阶段一需要四张结构相同的 `.xlsx` 文件，并支持一张可选文件：
 
 - 注册用户明细
 - 试用用户明细
 - 测试消耗用户明细
 - 付费用户明细
+- 创建用户明细（可选）
 
 核心字段：
 
@@ -93,6 +118,7 @@ python scripts/build_report.py \
   --paid "付费表.xlsx" \
   --tested "测试表.xlsx" \
   --trial "试用表.xlsx" \
+  --created "创建表.xlsx" \
   --registered "注册表.xlsx" \
   --out "SEM漏斗报表.xlsx"
 ```
@@ -156,10 +182,10 @@ UIN
 
 ### UIN 去重
 
-四张表按以下优先级合并：
+输入表按以下优先级合并：
 
 ```text
-paid > tested > trial > registered
+paid > tested > trial > created > registered
 ```
 
 同一 UIN 只保留优先级最高的一条记录。
@@ -184,14 +210,19 @@ paid > tested > trial > registered
 
 ```text
 sem-user-funnel-report/
+├── AGENTS.md
 ├── README.md
 ├── SKILL.md
 ├── requirements.txt
 ├── .gitignore
-└── scripts/
+├── scripts/
     ├── build_report.py
     ├── common.py
     └── fill_supplement.py
+└── web/
+    ├── src/
+    ├── tests/
+    └── package.json
 ```
 
 - `README.md`：项目说明和使用方法。
@@ -199,6 +230,7 @@ sem-user-funnel-report/
 - `scripts/build_report.py`：阶段一合并、去重、筛选和建表。
 - `scripts/fill_supplement.py`：阶段二回填与修复。
 - `scripts/common.py`：共用解析和 Excel 样式逻辑。
+- `web/`：浏览器本地处理的可视化两阶段工作流。
 
 ## 数据安全
 
@@ -235,5 +267,5 @@ missing_uins.csv
 - 广告系列内容解析依赖 `-Search-` 命名规则。
 - 阶段二会原地重写报表。
 - 缺失时间采用近似推断，必须结合业务数据复核。
-- 当前仓库未提供自动化测试和脱敏样例数据。
+- 当前仓库未提供脱敏样例数据；前端核心规则已有自动化测试。
 - 当前仓库未声明开源许可证；如需允许他人复用，应另行选择并添加 `LICENSE`。

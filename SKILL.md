@@ -1,16 +1,16 @@
 ---
 name: sem-user-funnel-report
-description: 将神策/广告平台导出的 SEM 用户明细四表（注册 registered、试用 trial、测试 tested、付费 paid）清洗合并为 Google/Bing 分渠道漏斗明细报表。当用户提到用户明细合并去重、UIN 去重、SEM 漏斗报表、广告系列内容拆分（区域/关键词类/细分词类）、{campaign} 占位符修复、广告内容乱码修复、sitelink 清理、按 UIN 推断首次访问时间等任务时，务必使用本 skill。
+description: 将神策/广告平台导出的 SEM 用户明细四张必传表（注册 registered、试用 trial、测试 tested、付费 paid）和可选创建表 created 清洗合并为 Google/Bing 分渠道漏斗明细报表。当用户提到用户明细合并去重、UIN 去重、SEM 漏斗报表、广告系列内容拆分（区域/关键词类/细分词类）、{campaign} 占位符修复、广告内容乱码修复、sitelink 清理、按 UIN 推断首次访问时间等任务时，务必使用本 skill。
 ---
 
 # SEM 用户明细清洗 → Google/Bing 漏斗报表
 
-把四张用户明细导出表（同一批用户按漏斗阶段分别导出，互有重叠）清洗成一份
+把四张必传用户明细导出表和可选 created 表（同一批用户按漏斗阶段分别导出，互有重叠）清洗成一份
 按投放渠道拆分、可直接用于分析的漏斗明细表。
 
 ## 输入
 
-四张结构相同的 xlsx，核心列：
+四张必传、可加一张 created 的结构相同 xlsx，核心列：
 `UIN, 名称, 创建场景, 消耗场景, UIN类型, 流量来源, 首次访问时间, 广告系列名称,
 广告系列内容, 广告系列字词, 浏览器语言, 广告系列来源, 注册时间, 创建/领取时间,
 首次测试消耗时间, 首次付费时间`
@@ -29,12 +29,12 @@ description: 将神策/广告平台导出的 SEM 用户明细四表（注册 reg
 
 ```bash
 python scripts/build_report.py --paid 付费表.xlsx --tested 测试表.xlsx \
-  --trial 试用表.xlsx --registered 注册表.xlsx --out 报表.xlsx
+  --trial 试用表.xlsx --created 创建表.xlsx --registered 注册表.xlsx --out 报表.xlsx
 ```
 
 脚本做的事（如果手写代码也按这个顺序）：
 
-1. **合并去重**：四表按 paid > tested > trial > registered 优先级拼接，
+1. **合并去重**：按 paid > tested > trial > created > registered 优先级拼接，created 未提供时跳过，
    按 UIN 去重保留第一条。付费用户的记录字段最全，所以优先级最高。
 2. **筛渠道**：只保留 `广告系列来源` ∈ {google, bingmkt}。
 3. **时间列转 0/1**：注册时间全部 =1（能出现在表里就是注册用户）；
